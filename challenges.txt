@@ -1,0 +1,36 @@
+component arch
+the goal:
+-	formal name is executable object reference
+-	details of how name maps to implementation is encapsulated in planning infrastructure (context dependent)
+	•	details of how implementation is constructed is encapsulated in component plans: builder, blueprint, and dependencies
+	•	uniform model: builders and blueprints and dependencies are also components with same naming/planning scheme.
+
+The theory:
+	•	every system can be described as a black-box component, with interfaces to the outside
+	•	every system can be described as a composition of simpler components; ultimately COTS components.
+	•	composition from components consists of 
+	◦	component dependencies (each its own sub-system)
+	◦	blueprint: instructions for how components are assembled, initialized, combined, consumed.
+	◦	builder: the agent that executes the instructions with the given components.
+	•	corollary: functionally equivalent systems are differentiated by complexity of composition graph.
+	•	building any system can be accomplished by:
+	◦	allocating COTS component resources
+	◦	engineering a blueprint to use those resources to implement novel components as needed (to build the end system).
+	◦	executing blueprints to build the new components.
+	◦	repeating this process (with new components added to the available pool) until the result is the desired end system.
+“Grand Challenges”
+-	naming scheme that is easy to understand, works consistently for all artifacts, resources, values.
+-	naming functionality: how can you invent meaningful names for an unbounded space of functionality?
+	•	naming state: how can you identify an instance by it’s current properties?  relational model?
+	•	context problem: naming the “correct” thing depends on context: (I want the same agent everyone else in my club uses)
+	•	distribution: discovering, allocating, binding to and managing remote components.
+	•	the (maven) dependency management problem: repeatable builds require immutable artifact naming, efficient builds require local caching, scalable distribution requires replicated repositories.
+	•	the deployment problem: many services require deployment specific configuration, changing the behavior of each instance.
+	•	the (chef) infrastructure as data problem: lower layers of machine, OS, and network resources should be managed as components for higher-level system component constructions with the same conceptual component model.
+	•	The (chef) component validation problem: a management (builder) agent should be able to monitor, inspect, and test a component to verify that it meets functional and quality requirements
+
+How to do computer science:
+	•	theory
+	•	tests of the theory
+	•	experimentation and analysis (skeptical, watching for bias of the observer)
+	•	application of the knowledge - how to apply, value of application
