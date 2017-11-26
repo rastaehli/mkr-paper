@@ -3,9 +3,8 @@
 # Abstract
 
 This paper describes how a canonical model of building can be applied to simplify software construction.  We describe such a canonical model based on previous research into software component technology then provide a detailed example of its application in a software build tool.  
-
-We show how this enables both a simpler and more powerful tool than the most popular build tool currently in use.
-Because the model is not specific to software construction it easily supports configuration, dependency injection, physical distribution and deployment.
+We show how this enables a simpler and more powerful tool than the current state of the art.
+The same model easily supports configuration, dependency injection, physical distribution and deployment.
 
 The primary contributions of this work are the validation of the model in a practical tool, the tool itself as a prototype implementation.
 
@@ -21,42 +20,48 @@ Section [QCM] describes the component model, Section [Maven] gives an overview o
 ## QCM: A Canonical Model for Systems Composition
 MKR is based on the Qua Component Model (QCM).  The goal for QCM is a canonical model for building things from components: a model complex enough to express every essential feature of other models, but with no unnecessary complexity. The model attempts to account for how computers are built from electronic components, how cake is made from flour, and yes, how software applications are built from source code.  
 
-QCM is a work in progress that has yet to be validated in large scale applications.  The original goal of QCM was to support QoS-based dynamic adaptation, but the QoS aspects are beyond the scope of this paper.  Here we focus only on how the model can be used to advance the state-of-the-art for software build tools.
+QCM is a work in progress that has yet to be validated in large scale applications.  The original goal of QCM was to support Quality-of-Service (QoS)-based dynamic adaptation, but the QoS aspects are beyond the scope of this paper.  Here we focus only on how the model can be used to advance the state-of-the-art for software build tools.
 
 ## Main Definitions:
-A component is a very general abstraction: it is anything that interacts with its environment through physical interfaces and discrete messages, and by physical interfaces we intend to include the invocation addresses for software objects executing on physical hardware.  This subsumes many similar concepts such as software objects and web services.
+In this paper, a component is a very general abstraction: it is anything that interacts with its environment through physical interfaces and discrete messages, and by physical interfaces we intend to include the invocation addresses for software objects executing on physical hardware.  This subsumes many similar concepts such as software objects and web services.
 
-A meta-component is a description of a component.
-- The meta-component has a specification with:
-   -- a type that identifies the (ideal) component behavior: what are its logical interfaces and how inputs (incoming messages) over time may determine outputs (outgoing messages).
-   -- a quality specification of tolerance for imprecision in output timing and values.
-- It has an interface map from logical interfaces to a URI for the actual interface.
-- It has an implementation plan that describes how the component is built:
-   -- a builder that implements build and disassemble operations.
-   -- a blueprint that provides assembly instructions for the builder.
-   -- a dependency map for blueprint resource requirements.
+A meta-component is a description of a component:
+- A specification with:
+    - a type that identifies the (ideal) component behavior: what are its logical interfaces and how inputs (incoming messages) over time may determine outputs (outgoing messages).
+    - a quality specification of tolerance for imprecision in output timing and values.
+- A plan that describes how the component is built:
+    - a dependency map for required resources.
+    - a blueprint for assembly instructions.
+    - a builder that can interpret and execute the blueprint.
+    - the planning agent to choose this implementation plan
+- It has a implementation map from logical interface names to the actual interfaces.
+- A map of the agents that create the component:
+    - architect => the agent who chose this specification,
+    - planner => agent to choose an implementation plan,
+    - provisioner => agent to allocate dependency resources,
+    - builder => agent conforming to  plan builder requirement,
+    - manager => agent to control activation
 
+Note that the meta-component refererences the actual component interfaces, but the meta-component is not the component itself.  Most of the objects referenced, the plan's builder, blueprint, and dependency values, are references to meta-components
 The implementation plan's builder, blueprint, and dependency values are themselves meta-components that provide access to component interfaces (or at least a way to build them).  
-A primitive meta-component describes an opaque resource or literal value: it has valid interface URIs (or literal values), but no implementation plan. 
+A primitive meta-component describes an opaque resource or literal value: it has valid interface URIs (or literal values), but no plan to describe how it is implemented. 
 The dependencies of an implementation plan define branches of an implementation tree that, when completed, will have all primitive meta-components at its leaves. 
 
 Figure <component-ontology> shows the definition of meta-component in the OWL (Web Ontology Language).
-Using this ontology, we can create RDF representations for components that can be stored and exchanged in messages.
-In Section <How Does MKR Do The Same> we show how repositories of these meta-components support distributed discovery of both primitive components and implementation plans to build complex components.
+Using this ontology, we can create RDF representations for meta-components that can be stored and exchanged in messages.
+In Section [How Does MKR Build Software] we show how repositories of these meta-components support distributed discovery of both primitive components and implementation plans to build complex components.
 
 QCM meta-components support reflection to both inspect and manipulate the implementation state of a component. 
 The lifecycle of a component implementation is modeled as a sequence of states:
 - Specified: the required behavior, location of interfaces, and quality are identified in a meta-component description.  Default location and quality may be inferred from the specification context.
 - Planned: an implementation plan with explicit dependencies has been chosen.
-- Provisioned: all leaves of the implementation tree are primitive; they identify component resources allocated to the build.
+- Provisioned: all leaves of the implementation tree identify component resources allocated to the build.
 - Assembled: the implementation has been built, but is not yet allowed to interact.
 - Active: the component is allowed to interact with others.
 
-The order of these states is significant: there is no point to planning an implementation until we know what is required; the component cannot be fully provisioned until planned, and so forth.  
-#Of course, the leaves of an implementation tree are always provisioned with ready components.  
-#Consider the case where you want to interact with an online shopping cart on your home PC:  The distributed abstraction of the shopping cart component to record your purchases may be constructed from the already ready components including the remote shopping service, and local and remote networking components.
+These states describe the essential sequence of steps for creating a component.  We can create independent components in any order, but a given component must _Specified_ before it is _Planned_, _Planned_ before it is _Provisioned_, and so forth.
 
-QCM models all state transitions as the execution of a plan consisting of a blueprint, an agent to interpret it, and a collection identifying any subcomponents required.  The allows a different agent to be used for each transition.  In particular, the plan to assemble a component from subcomponents consists of a blueprint, a builder agent to interpret the blueprint, and the subcomponents required for assembly.  This enables a simple, but powerful, plugin architecture:  so long as plugin builder agents conform to the QCM model, a generic build tool can construct arbitrarily complex systems by delegating specialized tasks to the builder agents. 
+All state transitions as the execution of a plan consisting of a blueprint, a builder to interpret it, and the dependency resources required.  The allows a different agent to be used for each transition.  In particular, the plan to assemble a component from subcomponents consists of a blueprint, a builder agent to interpret the blueprint, and the subcomponents required for assembly.  This enables a simple, but powerful, plugin architecture:  so long as plugin builder agents conform to the QCM model, a generic build tool can construct arbitrarily complex systems by delegating specialized tasks to the builder agents. 
 
 Figure "QCM Implementation Plan": visualize entities and relations: the plan has a map from dependency names to meta-components required for assembly, the blueprint specifies how to assemble them, and the builder agent performs the assembly according to the blueprint.  
 
