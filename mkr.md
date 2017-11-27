@@ -30,20 +30,16 @@ A meta-component is a description of a component:
     - a type that identifies the (ideal) component behavior: what are its logical interfaces and how inputs (incoming messages) over time may determine outputs (outgoing messages).
     - a quality specification of tolerance for imprecision in output timing and values.
 - A plan that describes how the component is built:
-    - a dependency map for required resources.
-    - a blueprint for assembly instructions.
-    - a builder that can interpret and execute the blueprint.
-    - the planning agent to choose this implementation plan
-- It has a implementation map from logical interface names to the actual interfaces.
-- A map of the agents that create the component:
-    - architect => the agent who chose this specification,
-    - planner => agent to choose an implementation plan,
-    - provisioner => agent to allocate dependency resources,
-    - builder => agent conforming to  plan builder requirement,
-    - manager => agent to control activation
+    - blueprint => literal instructions for building.
+    - dependencies => map for resources required by the blueprint.
+    - provisioner => agent to allocate dependency resources.
+    - builder => agent to interpret and execute the blueprint.
+    - manager => agent to control activation.
+- An implementation reference that maps from logical interface names to the interface implementations.
 
-Note that the meta-component refererences the actual component interfaces, but the meta-component is not the component itself.  Most of the objects referenced, the plan's builder, blueprint, and dependency values, are references to meta-components
-The implementation plan's builder, blueprint, and dependency values are themselves meta-components that provide access to component interfaces (or at least a way to build them).  
+Note that the meta-component refererences the component implementation interfaces, but the meta-component is not the component itself.  The implementation plan's builder, and dependency values are themselves meta-components that allow an algorithm to reflect on the structure of a component as a tree and access the interface interfaces when needed.  This allows us to use the meta-component to describe every step of the component lifecycle, from specification to activation.
+
+### Component Lifecycle
 A primitive meta-component describes an opaque resource or literal value: it has valid interface URIs (or literal values), but no plan to describe how it is implemented. 
 The dependencies of an implementation plan define branches of an implementation tree that, when completed, will have all primitive meta-components at its leaves. 
 
