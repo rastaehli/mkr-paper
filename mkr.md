@@ -37,17 +37,9 @@ A meta-component is a description of a component:
     - manager => agent to control activation.
 - An implementation reference that maps from logical interface names to the interface implementations.
 
-Note that the meta-component refererences the component implementation interfaces, but the meta-component is not the component itself.  The implementation plan's builder, and dependency values are themselves meta-components that allow an algorithm to reflect on the structure of a component as a tree and access the interface interfaces when needed.  This allows us to use the meta-component to describe every step of the component lifecycle, from specification to activation.
+We argue that this simple model is all that is needed to support reflection on how a complex software system is built.  It supports both description of built systems, and prescription of the requirements to be satisfied by an automated build tool.
 
-### Component Lifecycle
-A primitive meta-component describes an opaque resource or literal value: it has valid interface URIs (or literal values), but no plan to describe how it is implemented. 
-The dependencies of an implementation plan define branches of an implementation tree that, when completed, will have all primitive meta-components at its leaves. 
-
-Figure <component-ontology> shows the definition of meta-component in the OWL (Web Ontology Language).
-Using this ontology, we can create RDF representations for meta-components that can be stored and exchanged in messages.
-In Section [How Does MKR Build Software] we show how repositories of these meta-components support distributed discovery of both primitive components and implementation plans to build complex components.
-
-QCM meta-components support reflection to both inspect and manipulate the implementation state of a component. 
+## Component Lifecycle
 The lifecycle of a component implementation is modeled as a sequence of states:
 - Specified: the required behavior, location of interfaces, and quality are identified in a meta-component description.  Default location and quality may be inferred from the specification context.
 - Planned: an implementation plan with explicit dependencies has been chosen.
@@ -55,63 +47,61 @@ The lifecycle of a component implementation is modeled as a sequence of states:
 - Assembled: the implementation has been built, but is not yet allowed to interact.
 - Active: the component is allowed to interact with others.
 
-These states describe the essential sequence of steps for creating a component.  We can create independent components in any order, but a given component must _Specified_ before it is _Planned_, _Planned_ before it is _Provisioned_, and so forth.
+These states describe the essential sequence of steps for creating a component.  We can create independent components in any order, but a given component must be _Specified_ before it is _Planned_, _Planned_ before it is _Provisioned_, and so forth.
 
-All state transitions as the execution of a plan consisting of a blueprint, a builder to interpret it, and the dependency resources required.  The allows a different agent to be used for each transition.  In particular, the plan to assemble a component from subcomponents consists of a blueprint, a builder agent to interpret the blueprint, and the subcomponents required for assembly.  This enables a simple, but powerful, plugin architecture:  so long as plugin builder agents conform to the QCM model, a generic build tool can construct arbitrarily complex systems by delegating specialized tasks to the builder agents. 
+Each state is realized by an agent that operates on the meta-component:
 
-Figure "QCM Implementation Plan": visualize entities and relations: the plan has a map from dependency names to meta-components required for assembly, the blueprint specifies how to assemble them, and the builder agent performs the assembly according to the blueprint.  
+1. An _architect_ chooses the specification.
+1. A _planner_ chooses the plan that can satisfy the specification.
+1. A _provisioner_ allocates the resources required by the plan.
+1. The plan's _builder_ assembles the component.
+1. The plan's _manager_ activates the component.
 
-1. assembly and disassembly, for locating and provisioning, and so forth.
-1. A repository discovery plan has a strategy for finding repositories to search for components for a given interface location.
-1. An implementation search plan has a strategy for finding and selecting an implementation for a type, repositories to search for implementations and a search agent to interpret the strategy.
-1. A provisioning plan has a strategy for allocating subcomponent implementations, repositories to search for implementations, and a provisioner agent to interpret the strategy.
-1. An assembly plan has a blueprint for assembly, subcomponents required, and a builder agent to interpret the blueprint. (assemble)
-1. A startup plan has a blueprint for startup actions, subcomponents to be started, and a startup agent to interpret the blueprint.
-1. A shutdown plan has a blueprint for shutdown actions, subcomponents to be shutdown, and a shutdown agent to interpret the blueprint. 
-1. A disassembly plan has a blueprint for disassembly, subcomponents to be recycled, and a recycling agent to interpret the blueprint.
-1. A recycling plan has a blueprint for release of , subcomponents to be recycled, and a recycling agent to interpret the blueprint.
+This defines a simple, but powerful, plugin architecture:  a generic _planner_ and _provisioner_ can build arbitrarily complex systems by finding a plan to satisfy a specification from QCM-compliant plan repositories, recursively building the plan's dependencies, then invoking the plan's builder to realize the component.  Primitive meta-components are those that have no dependencies and require no building.  Assembled meta-components are those with components that have already been built.  The provisioning process terminates when all dependencies are satisfied by primitive or assembled meta-components.
 
-Of course software build tools are also primarily concerned with building from dependencies, but sometimes this is lost amid specialized concerns of building compiled objects from source, building packages and so forth.
+Figure <component-ontology> shows the definition of meta-component in the OWL (Web Ontology Language).
+Using this ontology, we can create RDF representations for meta-components that can be stored and exchanged in messages.
+In Section [How Does MKR Build Software] we show how repositories of these meta-components support distributed discovery of both primitive components and implementation plans to build complex components.
 
-What Does Maven Do and How?
+# What Does Maven Do and How?
 Maven is currently the most popular [?] build tool for Java projects.  To avoid offending Maven evangelists I must quickly add that Maven can do more than build Java software.  Strictly speaking, it is a build framework that you may customize to build and deploy any information artifact; software or other.
 
-In its simplest and most common use as a Java build tool, the Maven command "mvn -install" takes a directory hierarchy of Java and related project source files, plus a Project Object Model (POM) file, as input and builds and deploys the default output artifact; a jar file for example.
+In its simplest and most common use as a Java build tool, the Maven command "mvn -install" takes as input a directory hierarchy of Java source files plus a Project Object Model (POM) file and outputs a jar file.  The jar file is then "installed" in a maven "artifact" repository where it can be be referenced as a dependency by other projects.
 
 As with QCM, we will describe the main terminology and build model defined by Maven.
 
-Main Definitions:
-- An artifact is an immutable file identified by "coordinates" consisting of group, artifact, and version identifiers.  For example the coordinates org.apache:axis:1.1 identify the immutable version 1.1 of the axis artifact (a ".jar" Java Archive file) from the Apache Software Foundation.
-- A Maven project is a collection of source files in a standard directory hierarchy with a POM file at the root.
-- A POM file describes the artifact to be built and explicitly declares all build dependencies on other artifacts.  The POM file may identify and configure any non-standard plugins used to build the project artifact.
-- A Maven repository supports storage and retrieval of artifacts by their coordinates.
+## Maven Definitions:
+- An _artifact_ is an immutable file identified by "coordinates" consisting of _group_, _artifact_, and _version_ identifiers.  For example the coordinates org.apache:axis:1.1 identify the immutable version 1.1 of the axis artifact (a ".jar" Java Archive file) from the Apache Software Foundation.
+- A _Maven project_ is a collection of source files in a standard directory hierarchy with a POM file at the root.
+- A _POM file_ describes the artifact to be built and explicitly declares all build dependencies on other artifacts.  The POM file may identify and configure any non-standard plugins used to build the project artifact.
+- A _Maven repository_ supports storage and retrieval of artifacts by their coordinates.
 
-Maven defines its standard build lifecycle as a sequence of build goals :
+Maven defines its standard build lifecycle as a sequence of build goals:
 1. clean: remove any files derived from previous builds.
 1. compile: derive Java classes (or other compiled files) from source.
 1. test: execute automated tests and capture test results.
 1. package: build the project artifact, such as a jar file.
 1. install: store the artifact in a local maven repository.
-1. deploy: push the artifact into a shared repository.
+1. deploy: push the artifact to a remote repository.
 
-Maven's standardization of these concepts yields its greatest strength: the ability to reliably build a project even when the project files are moved to another organization and environment.  So long as a maven project build depends only on project files and immutable artifacts available from public repositories, the execution of the install goal will produce the same successful result in any maven environment.
+Maven's standardization of these concepts yields its greatest strength: the ability to reliably build a project even when the project files are moved to another organization and environment.  So long as a maven project build depends only on project files and immutable artifacts available from trusted repositories, the execution of the install goal will produce the same successful result in any maven environment.
 
-Unlike the QCM lifecycle that describes generic stages in building a component, the Maven lifecycle assumes an artifact is build from a collection of project files.   Each stage of the maven lifecycle refers to a transformation on this collection of files: compiled classes, test results, a package file, a repository artifact.  This assumption about project files is somewhat at odds with its goal of being a universal build tool.  The fact that you can create new plugins for any build goal does not change this fact of the Maven build lifecycle.
+Unlike a QCM plan that allows arbitrary dependencies,  Maven assumes a collection of project files and pre-built artifacts.   Each stage of the maven lifecycle refers to a transformation on this collection of files: compiled classes, test results, a package file, a repository artifact.  
 
-For the purpose of this paper, we deliberately ignore many features of Maven that are not relevant to building software.  The prime feature that is relevant is how Maven executes the "install" goal.  
+For the purpose of this paper, we focus on how Maven builds software when executing the "install" goal.  
 
-When invoked with any goal, Maven first reads and validates the POM file.  From the POM, it learns the type and coordinates of the artifact to be produced.  When invoked with the install goal, Maven automatically executes compile, test, and package goals first to ensure the artifact is built and ready for installation.  
+When invoked with any goal, Maven first reads and validates the POM file. From the POM, it learns the type and coordinates of the artifact to be produced.  When invoked with the install goal, Maven automatically executes compile, test, and package goals first to ensure the artifact is built and ready for installation.  
 
 Because it is a plugin-framework, it also learns from the POM the artifacts that implement the plugin goals.  These plugins are downloaded, if necessary, from a trusted repository and executed to achieve each goal.  Many Java projects use the default plugins inherited from the standard Maven installation, but any project may be configured to use custom plugins.
 
-The default compile plugin uses the configured Java Development Kit and compile-time libraries identified in the POM file dependencies to compile all Java files in the folder src/java to class files written to (new directories in) target/classes.  The default test plugin compiles test sources from src/test/Java to target/test/classes, executes those tests and captures test results in target/test/output.  The default package plugin delegates to the appropriate packaging tool based on the POM file's declared artifact type.  For example, if the artifact type is "jar" then the JDK jar tool is invoked to copy everything in target/classes and all other files in src/resources into a Java archive library file in the target directory.  Finally, the default install plugin will copy the packaged artifact file to a Maven repository with the specified coordinates.
+The default compile plugin uses the configured Java Development Kit (JDK) and compile-time libraries identified in the POM file dependencies to compile all Java files in the folder src/java to class files written to (new directories in) target/classes.  The default test plugin compiles test sources from src/test/Java to target/test/classes, executes those tests and captures test results in target/test/output.  The default package plugin delegates to the appropriate packaging tool based on the POM file's declared artifact type.  For example, if the artifact type is "jar" then the JDK jar tool is invoked to copy everything in target/classes and all other files in src/resources into a Java archive library file in the target directory.  Finally, the default install plugin will copy the packaged artifact file to a local Maven repository with the specified coordinates. (The local Maven repository is a hierarchical directory structure storing each artifact in a path based on its coordinates.)
 
 Maven coordinates support both a development "SNAPSHOT" of an artifact and an immutable released version.  During development, when a project may undergo rapid changes, the "SNAPSHOT" designation is used to indicate that an artifact is under development and may be overwritten at any time in the repository by a newer build.  A timestamp is appended to the actual artifact file name so that the name still effectively represents an immutable object.  However, when another project includes the SNAPSHOT designation on a dependency version it is explicitly declaring itself to be dependent on mutable artifact.  All such SNAPSHOT dependencies must be replaced with immutable versions before a project may used to release a new immutable artifact version.
 
 # How Does MKR Do The Same?
 
-The QCM model supports building through backward chaining:   MKR starts with the specification of a goal and searches its repositories for candidate meta-components that match the goal.  Each candidate either identifies an active component or contains an implementation plan that can be executed to build a active component.
-If a candidate's implementation plan has unresolved dependencies, these serve as subgoals for a recursive invocation of MKR.
+MKR is a proof of concept implementation of a generic QCM planner and provisioner.  It plans by backward chaining: given a meta-component with the specification of a goal component type,  MKR searches its repositories for candidate meta-components that can satisfy the goal.  Each candidate meta-component either identifies an assembled component or contains an plan that can be executed to build the desired component.
+If a candidate's plan has unresolved dependencies, these serve as subgoals for recursive invocations of MKR.
 
 For example, to deploy the latest revision of  a web application "WebApp-1.0-*" (version 1.0 that is still in development) to a server "www.myorg.domain", port 8080 with context "myapp", we define a MetaComponent (in Turtle RDF syntax):
 
@@ -144,15 +134,12 @@ Sidebar "MetaComponent":
     The wildcard character "*" may be used in place of any component of the URI to match any value of the same component of a candidate URI.
 
     A qcm:type is a URI for a resource that names the behavior of the component.  
-
-    The actual resource should be an instance of owl:class qcm:Type and have attributes that describe the names of the component's interfaces, 
-    but introspection on the type is beyond the scope of this paper.
+    
+    A qcm:type resource, if it exists, should be an instance of owl:class qcm:Type and have attributes that describe the names of the component's interfaces, but introspection on the type is beyond the scope of this paper.
     
     A qcm:interface maps one of the type's interface names to the URI used to invoke that component interface.
 
-    In the "webArchive" dependency, "x -> y" is shorthand for a an association from string to value: 
-
-    "webArchive" -> "src:my-webapp-1.0" translates to '_ owl:class qcm:association; qcm:key "web-archive"; qcm:value: src:my-webapp-1.0'.
+    In the "webArchive" dependency we use the operator "->" as shorthand for an association from string to value: "webArchive" -> "src:my-webapp-1.0" translates to '_ owl:class qcm:association; qcm:key "web-archive"; qcm:value: src:my-webapp-1.0'.
 
 
 Note that the implementation of the WebApp type is constrained by specifying the webArchive dependency and baseURL interface.  Since all attributes of a ComponentSpec represent restrictions on the implementation, specifying interfaces and implementation dependencies creates a parameterized type.  
@@ -273,6 +260,8 @@ Can do "build avoidance" by finding previously built components advertised in th
 Can store reusable deployment configuration plans in source controlled repository for change management control, make these part of the definition of a deployment environment; a system-level component implementation.  This avoids the problems of trying to maintain knowledge of deployment configurations in the same source with the component being deployed: we don't want to have to consider the component changed every time we think of a new place to deploy it.
 
 Figure [MavenWARExample] shows the POM file for building a simple Web application WAR file.  (A WAR file is a file that can be deployed into a web server container to implement a dynamic web site. )  Figure [MKRMyWebExample] shows the MKR plan for assembling the same WAR file from its dependencies.  Note how MKR separates responsibility for WAR file assembly from other concerns, making this specification smaller and less complex than the Maven POM file.  MKR also 
+
+[Maven] assumption about project files is somewhat at odds with its goal of being a universal build tool.  For example there seems to be no way to identify a local web service as a dependency to be composed with some other service.
 
 # Conclusion
 
