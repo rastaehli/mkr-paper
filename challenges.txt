@@ -29,6 +29,11 @@ The theory:
 	•	the (chef) infrastructure as data problem: lower layers of machine, OS, and network resources should be managed as components for higher-level system component constructions with the same conceptual component model.
 	•	The (chef) component validation problem: a management (builder) agent should be able to monitor, inspect, and test a component to verify that it meets functional and quality requirements
 -   controlling location (co-locating for efficiency, distributing for fault tolerance)
+-   monitoring and health checks - chef can periodically "test" service for compliance with specification
+-   adaptation, when system conditions violate planning assumptions
+-   orthogonal composition: scaling for load, redandancy for fault tolerance
+-    
+
 How to do computer science:
 	•	theory
 	•	tests of the theory

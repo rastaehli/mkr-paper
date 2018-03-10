@@ -30,8 +30,9 @@ A meta-component is a description of a component:
     - a type that identifies the (ideal) component behavior: what are its logical interfaces and how inputs (incoming messages) over time may determine outputs (outgoing messages).
     - a quality specification of tolerance for imprecision in output timing and values.
 - A plan that describes how the component is built:
-    - blueprint => literal instructions for building.
-    - dependencies => map for resources required by the blueprint.
+    - blueprint => literal instructions for building from dependencies.
+    - dependencies => map role=>resource for all resources required for building.  A resource may be changed, consumed or become part of the built component.
+    - configureable-attributes => map attribute=>value for all configurable attributes.
     - provisioner => agent to allocate dependency resources.
     - builder => agent to interpret and execute the blueprint.
     - manager => agent to control activation.
@@ -44,7 +45,8 @@ The lifecycle of a component implementation is modeled as a sequence of states:
 - Specified: the required behavior, location of interfaces, and quality are identified in a meta-component description.  Default location and quality may be inferred from the specification context.
 - Planned: an implementation plan with explicit dependencies has been chosen.
 - Provisioned: all leaves of the implementation tree identify component resources allocated to the build.
-- Assembled: the implementation has been built, but is not yet allowed to interact.
+- Built: the implementation has been built, but is not yet allowed to interact.
+- Configured: the implementation has configurable attributes set.
 - Active: the component is allowed to interact with others.
 
 These states describe the essential sequence of steps for creating a component.  We can create independent components in any order, but a given component must be _Specified_ before it is _Planned_, _Planned_ before it is _Provisioned_, and so forth.
@@ -54,10 +56,10 @@ Each state is realized by an agent that operates on the meta-component:
 1. An _architect_ chooses the specification.
 1. A _planner_ chooses the plan that can satisfy the specification.
 1. A _provisioner_ allocates the resources required by the plan.
-1. The plan's _builder_ assembles the component.
+1. The plan's _builder_ builds the component.
 1. The plan's _manager_ activates the component.
 
-This defines a simple, but powerful, plugin architecture:  a generic _planner_ and _provisioner_ can build arbitrarily complex systems by finding a plan to satisfy a specification from QCM-compliant plan repositories, recursively building the plan's dependencies, then invoking the plan's builder to realize the component.  Primitive meta-components are those that have no dependencies and require no building.  Assembled meta-components are those with components that have already been built.  The provisioning process terminates when all dependencies are satisfied by primitive or assembled meta-components.
+This defines a simple, but powerful, plugin architecture:  a generic _planner_ and _provisioner_ can build arbitrarily complex systems by finding a plan to satisfy a specification from QCM-compliant plan repositories, recursively building the plan's dependencies, then invoking the plan's builder to realize the component.  Primitive meta-components are those that have no dependencies and require no building.  Built meta-components are those with components that have already been built.  The provisioning process terminates when all dependencies are satisfied by primitive or built meta-components.
 
 Figure <component-ontology> shows the definition of meta-component in the OWL (Web Ontology Language).
 Using this ontology, we can create RDF representations for meta-components that can be stored and exchanged in messages.
@@ -100,8 +102,14 @@ Maven coordinates support both a development "SNAPSHOT" of an artifact and an im
 
 # How Does MKR Do The Same?
 
-MKR is a proof of concept implementation of a generic QCM planner and provisioner.  It plans by backward chaining: given a meta-component with the specification of a goal component type,  MKR searches its repositories for candidate meta-components that can satisfy the goal.  Each candidate meta-component either identifies an assembled component or contains an plan that can be executed to build the desired component.
+MKR is a proof of concept implementation of a generic QCM builder.  Given the goal of building a component from a meta-component with only the type specified,  MKR searches its repositories for candidate meta-components that can satisfy the goal.  Each candidate meta-component either identifies an built component or contains an plan that can be executed to build the desired component.
 If a candidate's plan has unresolved dependencies, these serve as subgoals for recursive invocations of MKR.
+
+## Example
+-   goal build running WebApp-1.0-* at http://www.myorg.domain:8080/myapp
+-   plan: 
+    - builder Deployer-x.x at http://www.myorg.domain:9000/deployer
+    - dependency "warFile" -> build WebApp.war-1.0
 
 For example, to deploy the latest revision of  a web application "WebApp-1.0-*" (version 1.0 that is still in development) to a server "www.myorg.domain", port 8080 with context "myapp", we define a MetaComponent (in Turtle RDF syntax):
 
@@ -171,7 +179,7 @@ This resource is another QCMComponentSpec that identifies the type of this resou
 A MKR object is an instance of the standard QCMBuilder type which, like Maven, is responsible for implementing QCMComponentSpec lifecycle transitions.  Also like Maven, it does this using an open-ended set of plugin build components.  The great simplicity of MKR comes from using the same QCMComponentSpec abstraction to represent both build goals and build implementation plans.  The ability to build complex systems comes from composing many simple implementation plans.
 
      =========
-    As created above, the goal is not yet implemented, only typed and located.  In this state, the "ready" command is the same as the command sequence "plan provision assemble ready".
+    As created above, the goal is not yet implemented, only typed and located.  In this state, the "ready" command is the same as the command sequence "plan provision build configure ready".
      ==============
 
 The plan command searches the local implementation repository for plans with matching specs.  A spec matches if the specified values in the goal match: the type, dependency, and interface.  Wildcards are supported to allow an implementation plan to match a range of values.  In this example, the only match is the one our deployment engineer created for building an SVN project and deploying to a specified target:
@@ -234,9 +242,9 @@ Build Patterns
 - copy files from source directory to a target directory
 - build a war file from SVN project
 - install an immutable versioned build artifact (arbirary file) in a shared repository
-- deploy a file to a remote target context (webapp deployment account for example) (replace components of the deployed component, prep for stop, dis-assemble, re-assemble, start of new)
-- stop, disassemble (and recycle old components), (recreate, reuse, and replace) and re-assemble, then start a remote webapp.
-- upgrade a ready component (provision replacement components, including new version of component libraries, then take offline, restart, re-assembling with upgraded components, put online)
+- deploy a file to a remote target context (webapp deployment account for example) (replace components of the deployed component, prep for stop, disassemble, reassemble, start of new)
+- stop, disassemble (and recycle old components), (recreate, reuse, and replace) and reassemble, then start a remote webapp.
+- upgrade a ready component (provision replacement components, including new version of component libraries, then take offline, restart, reassembling with upgraded components, put online)
 - upgrade a suite of components
 - handle failure of upgrade with rollback of all changes in transaction.
 - create a new version of a class, compile, upgrade test environment with new version, test, repeat till DEV tests pass, commit to source repository
@@ -259,7 +267,7 @@ Maven costs:
 Can do "build avoidance" by finding previously built components advertised in the local repository.
 Can store reusable deployment configuration plans in source controlled repository for change management control, make these part of the definition of a deployment environment; a system-level component implementation.  This avoids the problems of trying to maintain knowledge of deployment configurations in the same source with the component being deployed: we don't want to have to consider the component changed every time we think of a new place to deploy it.
 
-Figure [MavenWARExample] shows the POM file for building a simple Web application WAR file.  (A WAR file is a file that can be deployed into a web server container to implement a dynamic web site. )  Figure [MKRMyWebExample] shows the MKR plan for assembling the same WAR file from its dependencies.  Note how MKR separates responsibility for WAR file assembly from other concerns, making this specification smaller and less complex than the Maven POM file.  MKR also 
+Figure [MavenWARExample] shows the POM file for building a simple Web application WAR file.  (A WAR file is a file that can be deployed into a web server container to implement a dynamic web site. )  Figure [MKRMyWebExample] shows the MKR plan for building the same WAR file from its dependencies.  Note how MKR separates responsibility for the WAR file build from other concerns, making this specification smaller and less complex than the Maven POM file.  MKR also 
 
 [Maven] assumption about project files is somewhat at odds with its goal of being a universal build tool.  For example there seems to be no way to identify a local web service as a dependency to be composed with some other service.
 
@@ -273,4 +281,16 @@ Software components have long been promised as the solution to software developm
 Ingredients versus interfaces.  Not just dependencies.  By specifying dependencies with MetaComponents, we are not restricted to declaring only behavior (logical interface) type.  We can also specify physical interface locations (distribution) and even parts (restrictions) of the implementation.  Could this be valuable in new language design?  If Java code could reference only QCM types, the runtime environment could perform dependency injection, automatically compute (jar-file) dependencies and other.
 
 A component implementation does know its depednencies / ingredients: the parts it owns and may consume in its constructions.
+
+## Composition of Extra-Functional Behavior
+
+If we can construct an X-Service we can give this service HA-fault-tolerant, secured, rate-limited, highly-available, auditable and other extra-functional behavior with composable filters.  The plans for these filters include the service as a dependency and add additional resources and configuration to yeild better service quality.
+
+HA-fault-tolerant: add monitors, failover and retry logic to reduce the chance of system errors returned to the client.
+secured: add client authentication and permission checks to reduce the chance of unauthorized access to protected operations and information.
+rate-limited: add rate monitoring and limit-exceeded responses to protect response times for clients that adhere to SLA limits.
+auto-scaling: automatically add/remove duplicate and load-balanced instances of a stateless service to maintain targeted performance levels.
+auditable: add usage logging to support auditing of who uses the service and how.
+
+
 
