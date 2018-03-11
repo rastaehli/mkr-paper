@@ -313,7 +313,9 @@ Mkr supports dependency injection by configuring mkr with plans for each importe
 - mkr activate("MyType")  // short spec of desc with only type name (defined in mkr repository of imported types)
 - mkr 
 
-This simplfies programming by separating the concerns of initialization and configuration from program function.  Instead of a main program like this:
+This simplfies programming by separating the concerns of initialization and configuration from program function.  Object factories (classes) expose methods that MKR can use to build (constructors) from dependencies (constructor args), methods to configure (setters) from configuration-attributes, and methods to activate the object (if it is not simply a passive object).  The Object implementation itself can thus be wholly separated from a class or other mechanism for instantiating.  Programming models like Traits achieve this separation by making all method implementations dependent only on the interface, not the construction.
+
+Instead of a main program like this:
   import java.lang.Map;
   ...
   import javax.jdbc.DriverManager;
