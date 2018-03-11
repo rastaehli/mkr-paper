@@ -2,8 +2,7 @@
 
 # Abstract
 
-This paper describes how a canonical model of building can be applied to simplify software construction.  We describe such a canonical model based on previous research into software component technology then provide a detailed example of its application in a software build tool.  
-We show how this enables a simpler and more powerful tool than the current state of the art.
+This paper describes how a canonical model of building can be applied to simplify software construction.  We describe the model and provide a detailed example of its application in a software build tool which is both simpler and more powerful than the current state of the art.
 The same model easily supports configuration, dependency injection, physical distribution and deployment.
 
 The primary contributions of this work are the validation of the model in a practical tool, the tool itself as a prototype implementation.
@@ -292,5 +291,106 @@ rate-limited: add rate monitoring and limit-exceeded responses to protect respon
 auto-scaling: automatically add/remove duplicate and load-balanced instances of a stateless service to maintain targeted performance levels.
 auditable: add usage logging to support auditing of who uses the service and how.
 
+## Programming: object instantiation and initialization
 
+Modern programming languages like Java, Javascript (ECMAScript 5) and Python provide 
+- extra syntax for object construction and instantiation (public X(...), new X(params), new X(params), def __init__(self), X(params)), 
+- more syntax to provide controlled access to configure object implementation properties
+- still more libraries and design patterns to support dependency injection and factories.
 
+Because the QCM is a canonical model of construction, it can be applied with a language to encapsulate this extra complexity behind a standard Meta-Object Protocol (MOP):
+- if mkr is a singleton service that implements the MKR MOP
+- mkr activate(desc)  // returns an active instance of component specified by desc (including config in desc)
+
+Mkr handles object construction with default class constructor plan associated with the type in "desc".
+
+Mkr handles configuration as part of the construction, taking configuration parameters from desc.plan.configuration.
+
+Mkr supports dependency injection by configuring mkr with plans for each imported type.  For example, a test environment can configure mock implementation or test configurations of imported types with  regular implementations:
+- mkr advertise(desc)  // during mkr setup, adds desc.plan for building plan.type to mkr repository
+- mkr activate(desc.type)  // at any time later, returns an instance built from desc.plan
+
+- mkr activate("MyType")  // short spec of desc with only type name (defined in mkr repository of imported types)
+- mkr 
+
+This simplfies programming by separating the concerns of initialization and configuration from program function.  Instead of a main program like this:
+  import java.lang.Map;
+  ...
+  import javax.jdbc.DriverManager;
+
+  class MyApp {
+  ...
+  public MyApp(Connection c, ...) {
+    // initialize the instance of MyApp
+  }
+
+  private void doWork() {
+
+  }
+
+  public void main(String args[]) {
+    String url = ... // read database URL configuration
+    Map connectionProps = ... // read additional database configuration
+    conn = DriverManager.getConnection(url, connectionProps);
+    ...  // init all objects used in application initialization
+
+    // ensure objects are initialized in correct sequence (before use)
+
+    doWork();
+  }
+  }
+
+We can write a generic main program like this:
+
+  public void main(String args[]) {
+    
+    MKR mkr = new MKR();  // local object may connect to network of peers as configured in local deployment
+    try {
+        if (args[0] = "-f") {
+            Desc desc = readDescFile(args[1]); // second arg is file with component description
+            mkr.activate(desc);
+        } else {
+            mkr.activate(args[0]);  // first arg is type to build and activate
+        }
+    } catch(Exception e) {
+        System.out.println("exception: "+e.message());
+        showHelp();
+    }
+  }
+
+Put all the imports and initialization dependencies in the component description file:
+
+  {
+    type: "MyApp",
+    plan: {
+        build: "new MyApp(conn, ...)",
+        configure: {
+            loops: "instance.setLoops(loops)",
+            ...
+        }
+        dependencies: {
+            conn: "TestEnvDBConn",
+            ...
+        }
+        configureable-attributes: {
+            loops: 200,
+            ...
+        }
+  }
+
+And simplify the class:
+
+  import javax.jdbc.Connection;  // import only types needed in constructor and doWork
+
+  class MyApp {
+  ...
+  public MyApp(Connection c, ...) {
+    // initialize the instance of MyApp from constructor args
+  }
+  
+  private void doWork() {
+    // do application functionality
+  }
+
+  }
+  
