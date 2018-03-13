@@ -34,10 +34,13 @@ A meta-component is a description of a component:
     - configureable-attributes => map attribute=>value for all configurable attributes.
     - provisioner => agent to allocate dependency resources.
     - builder => agent to interpret and execute the blueprint.
+    - configurer => agent to apply configuration attributes
     - manager => agent to control activation.
-- An implementation reference that maps from logical interface names to the interface implementations.
+- An implementation that maps from logical interface names to locations. The identification of a location includes both context and address just as web resources are identified by schema, domain, path and resource id.
 
 We argue that this simple model is all that is needed to support reflection on how a complex software system is built.  It supports both description of built systems, and prescription of the requirements to be satisfied by an automated build tool.
+
+A special note may help about immutable values such as version 1.7 of a binary software file for a text editor.  In this case, we propose that the name of they artifact source-domain:artifact-name:version _is_ the type.  Of course, it is a sub-type of binary file, but this versioned, fully qualified, artifact name specifically identifies this immutable value and any accurate replica of the value implements the same type.  This proves useful as a means to retrieve the implementation from any trusted repository.
 
 ## Component Lifecycle
 The lifecycle of a component implementation is modeled as a sequence of states:
@@ -49,6 +52,8 @@ The lifecycle of a component implementation is modeled as a sequence of states:
 - Active: the component is allowed to interact with others.
 
 These states describe the essential sequence of steps for creating a component.  We can create independent components in any order, but a given component must be _Specified_ before it is _Planned_, _Planned_ before it is _Provisioned_, and so forth.
+However, it is also possible to describe a partially provisioned component of type A as a fully provisioned instance of a type B that is a dependency for an alternate plan to build type A. (the same ingredients for the first plan could be partitioned into ingredients for B plus the remaining ingredients to build alternate plan for A from B)  For example, a client application could be built with an unsatified dependency for a service C and deployed with a dynamic plan for loading the binding for service C at runtime, perhaps by constructing a dynamic proxy for a remote implementation of C.  This is a common case for web services that are configured with only the address for remote collaborators and the objects to interact with the remotes are constructed dynamically at runtime.
+
 
 Each state is realized by an agent that operates on the meta-component:
 
@@ -285,6 +290,7 @@ A component implementation does know its depednencies / ingredients: the parts i
 
 If we can construct an X-Service we can give this service HA-fault-tolerant, secured, rate-limited, highly-available, auditable and other extra-functional behavior with composable filters.  The plans for these filters include the service as a dependency and add additional resources and configuration to yeild better service quality.
 
+Remotely-callable:  add connection to network infrastructure to handle upcalls to the component and return responses via a given protocol. add remote proxy adapter to handler remoter protocol at the client.  This is a two-step composition: the construction of a remotely callable service is independent of the existence and construction of the client-side proxy.  We can view the client proxy as part of the remote service or part of the client, it doesn't really matter since the client operates fine without the proxy so long as it does not call it and the service operates fine without being called by the client.
 HA-fault-tolerant: add monitors, failover and retry logic to reduce the chance of system errors returned to the client.
 secured: add client authentication and permission checks to reduce the chance of unauthorized access to protected operations and information.
 rate-limited: add rate monitoring and limit-exceeded responses to protect response times for clients that adhere to SLA limits.
@@ -294,11 +300,11 @@ auditable: add usage logging to support auditing of who uses the service and how
 ## Programming: object instantiation and initialization
 
 Modern programming languages like Java, Javascript (ECMAScript 5) and Python provide 
-- extra syntax for object construction and instantiation (public X(...), new X(params), new X(params), def __init__(self), X(params)), 
+- extra syntax for object construction and instantiation (public X(...), new X(params), new X(params), def __init__(self), X(params)), annotations (for Spring dependency injection)
 - more syntax to provide controlled access to configure object implementation properties
-- still more libraries and design patterns to support dependency injection and factories.
+- still more libraries and design patterns to support (Spring) dependency injection and factories.
 
-Because the QCM is a canonical model of construction, it can be applied with a language to encapsulate this extra complexity behind a standard Meta-Object Protocol (MOP):
+Because the QCM is a canonical model of construction, it can be applied with a language to simplify by encapsulating this extra complexity behind a standard Meta-Object Protocol (MOP):
 - if mkr is a singleton service that implements the MKR MOP
 - mkr activate(desc)  // returns an active instance of component specified by desc (including config in desc)
 
